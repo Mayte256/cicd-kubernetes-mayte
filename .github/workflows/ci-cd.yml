@@ -113,7 +113,7 @@ jobs:
     
     - name: 🔄 Actualizar deployment con nuevo tag
       run: |
-        kubectl set image deployment/cicd-kubernetes-mayte cicd-kubernetes-mayte=cicd-kubernetes-mayte:${{ steps.tag.outputs.image_tag }}
+        kubectl set image deployment/cicd-kubernetes-mayte app=cicd-kubernetes-mayte:${{ steps.tag.outputs.image_tag }}
         echo "✅ Deployment actualizado con tag: ${{ steps.tag.outputs.image_tag }}"
     
     - name: ⏳ Esperar rollout completado
