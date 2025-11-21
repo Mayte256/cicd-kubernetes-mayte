@@ -1,0 +1,111 @@
+# ===================================
+# PIPELINE CI/CD - GITHUB ACTIONS
+# Se ejecuta automáticamente cada vez que haces push
+# ===================================
+
+name: CI/CD Pipeline - Mayte
+
+# ¿Cuándo se ejecuta este pipeline?
+on:
+  push:
+    branches: [ main ]  # Cuando haces push a la rama main
+  pull_request:
+    branches: [ main ]  # Cuando creas un pull request
+
+# Variables globales
+env:
+  DOCKER_IMAGE: tuusuario/mayte-app  # CAMBIAR por tu usuario
+  APP_NAME: mayte-app
+
+# ===================================
+# TRABAJOS (JOBS)
+# ===================================
+
+jobs:
+  # JOB 1: Construir y publicar imagen Docker
+  build-and-push:
+    name: 🏗️ Build & Push Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+      # PASO 1: Descargar el código del repositorio
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+      
+      # PASO 2: Configurar Docker Buildx
+      # Buildx permite builds más eficientes
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      # PASO 3: Login en Docker Hub
+      # Usa los secrets que configuraste en GitHub
+      - name: 🔐 Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # PASO 4: Construir y subir la imagen
+      - name: 🐳 Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .              # Usar la carpeta actual
+          push: true              # Subir a Docker Hub
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha    # Usar cache de GitHub
+          cache-to: type=gha,mode=max
+      
+      # PASO 5: Mostrar resumen
+      - name: ✅ Build Summary
+        run: |
+          echo "✅ Imagen Docker construida exitosamente!"
+          echo "📦 Imagen: ${{ env.DOCKER_IMAGE }}:latest"
+          echo "🏷️  Tag: ${{ github.sha }}"
+          echo ""
+          echo "🎯 Siguiente paso: Desplegar en servidor"
+
+  # JOB 2: Validar archivos de Kubernetes
+  validate-kubernetes:
+    name: ✅ Validate K8s Configs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+      
+      - name: 🔧 Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: 🔍 Validate YAML files
+        run: |
+          echo "🔍 Validando archivos de Kubernetes..."
+          kubectl apply --dry-run=client -f k8s/deployment.yaml
+          echo "✅ deployment.yaml es válido"
+          kubectl apply --dry-run=client -f k8s/service.yaml
+          echo "✅ service.yaml es válido"
+          echo "🎉 ¡Todos los archivos son correctos!"
+
+  # JOB 3: Resumen final
+  summary:
+    name: 📊 Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [build-and-push, validate-kubernetes]
+    
+    steps:
+      - name: 📊 Show Summary
+        run: |
+          echo "================================"
+          echo "   🎉 PIPELINE COMPLETADO"
+          echo "================================"
+          echo ""
+          echo "✅ Imagen Docker: Construida y publicada"
+          echo "✅ Configuraciones K8s: Validadas"
+          echo ""
+          echo "🌐 Próximo paso:"
+          echo "   Desplegar en maytebryon.com"
+          echo ""
+          echo "================================"

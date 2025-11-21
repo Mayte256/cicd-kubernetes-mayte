@@ -1,0 +1,66 @@
+# ===================================
+# DOCKERIGNORE - No copiar esto al contenedor
+# ===================================
+
+# Entorno virtual (no necesario en el contenedor)
+venv/
+env/
+.venv
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# GitHub
+.github/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Tests
+tests/
+test/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Documentación
+README.md
+docs/
+*.md
+
+# Archivos de configuración local
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+logs/
+
+# Kubernetes (no necesarios en imagen Docker)
+k8s/
+*.yaml
+*.yml
+
+# Archivos temporales
+*.tmp
+.tmp/
+
+

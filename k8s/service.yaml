@@ -1,0 +1,27 @@
+# ===================================
+# KUBERNETES SERVICE
+# Expone tu aplicación al mundo exterior
+# ===================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mayte-app-service
+  labels:
+    app: mayte-app
+spec:
+  # Tipo de servicio
+  # NodePort permite acceso desde fuera del cluster
+  type: NodePort
+  
+  # Selector - ¿A qué Pods debe enviar tráfico?
+  selector:
+    app: mayte-app
+  
+  # Configuración de puertos
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80          # Puerto del Service
+    targetPort: 5000  # Puerto del contenedor
+    nodePort: 30080   # Puerto externo (30000-32767)

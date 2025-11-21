@@ -1,0 +1,78 @@
+# ===================================
+# KUBERNETES DEPLOYMENT
+# Define cómo se despliega tu aplicación
+# ===================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mayte-app-deployment
+  labels:
+    app: mayte-app
+    proyecto: cicd-kubernetes
+spec:
+  # ¿Cuántas copias de tu app quieres?
+  replicas: 2  # Dos copias para alta disponibilidad
+  
+  # ¿Cómo identificar los Pods que gestiona?
+  selector:
+    matchLabels:
+      app: mayte-app
+  
+  # Plantilla para crear los Pods
+  template:
+    metadata:
+      labels:
+        app: mayte-app
+        version: v1
+    spec:
+      containers:
+      - name: mayte-app
+        # IMPORTANTE: Cambiar 'tuusuario' por tu usuario de Docker Hub
+        image: tuusuario/mayte-app:latest
+        
+        # Siempre intenta descargar la última versión
+        imagePullPolicy: Always
+        
+        # Puerto que expone el contenedor
+        ports:
+        - containerPort: 5000
+          name: http
+        
+        # Variables de entorno
+        env:
+        - name: APP_VERSION
+          value: "v1.0"
+        - name: ESTUDIANTE
+          value: "Mayte"
+        
+        # Health check - Verifica si el contenedor está vivo
+        # Si /health falla, Kubernetes reinicia el Pod
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness check - Verifica si puede recibir tráfico
+        # Si /health falla, Kubernetes no le envía requests
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        
+        # Recursos del contenedor
+        resources:
+          requests:
+            memory: "128Mi"  # Mínimo que necesita
+            cpu: "100m"      # 0.1 CPU
+          limits:
+            memory: "256Mi"  # Máximo que puede usar
+            cpu: "200m"      # 0.2 CPU
