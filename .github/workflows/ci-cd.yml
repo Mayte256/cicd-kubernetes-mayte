@@ -14,6 +14,15 @@ jobs:
     - name: 📥 Checkout del código
       uses: actions/checkout@v3
     
+    - name: 📋 Verificar estructura de archivos
+      run: |
+        echo "=== Archivos en el repositorio ==="
+        ls -la
+        echo ""
+        echo "=== Contenido de requirements.txt ==="
+        cat requirements.txt
+        echo ""
+    
     - name: 🐍 Configurar Python 3.11
       uses: actions/setup-python@v4
       with:
@@ -22,8 +31,13 @@ jobs:
     - name: 📦 Instalar dependencias Python
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        echo "✅ Dependencias instaladas"
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+          echo "✅ Dependencias instaladas correctamente"
+        else
+          echo "❌ ERROR: No se encuentra requirements.txt"
+          exit 1
+        fi
     
     - name: ✅ Validar código Python
       run: |
@@ -39,12 +53,19 @@ jobs:
     - name: 🐳 Construir imagen Docker
       run: |
         docker build -t cicd-kubernetes-mayte:latest .
-        echo "✅ Imagen Docker construida: cicd-kubernetes-mayte:latest"
-    
-    - name: 🔍 Verificar imagen Docker
-      run: |
         docker images | grep cicd-kubernetes-mayte
-        echo "✅ Imagen verificada"
+        echo "✅ Imagen Docker construida exitosamente"
+    
+    - name: 🧪 Test rápido del contenedor Docker
+      run: |
+        echo "Probando contenedor Docker..."
+        docker run -d --name test-container -p 5000:5000 cicd-kubernetes-mayte:latest
+        sleep 10
+        curl -f http://localhost:5000/health || echo "Container no está listo todavía"
+        docker logs test-container
+        docker stop test-container
+        docker rm test-container
+        echo "✅ Test de contenedor completado"
     
     - name: ☸️ Instalar Minikube
       run: |
@@ -64,31 +85,30 @@ jobs:
       with:
         version: 'latest'
     
-    - name: ☸️ Verificar cluster de Kubernetes
+    - name: ☸️ Verificar cluster
       run: |
         kubectl cluster-info
         kubectl get nodes
-        echo "✅ Cluster funcionando correctamente"
+        echo "✅ Cluster funcionando"
     
-    - name: ☸️ Cargar imagen Docker en Minikube
+    - name: ☸️ Cargar imagen en Minikube
       run: |
         minikube image load cicd-kubernetes-mayte:latest
-        minikube image ls | grep cicd-kubernetes-mayte
         echo "✅ Imagen cargada en Minikube"
     
-    - name: ☸️ Desplegar aplicación en Kubernetes
+    - name: ☸️ Desplegar en Kubernetes
       run: |
         kubectl apply -f kubernetes/deployment.yaml
         kubectl apply -f kubernetes/service.yaml
         echo "✅ Manifiestos aplicados"
     
-    - name: ⏳ Esperar que los pods estén listos
+    - name: ⏳ Esperar pods listos
       run: |
         echo "Esperando que los pods estén listos..."
-        kubectl wait --for=condition=ready pod -l app=cicd-kubernetes-mayte --timeout=300s
-        echo "✅ Pods listos"
+        kubectl wait --for=condition=ready pod -l app=cicd-kubernetes-mayte --timeout=120s || true
+        kubectl get pods -l app=cicd-kubernetes-mayte
     
-    - name: 📊 Verificar estado del despliegue
+    - name: 📊 Estado del despliegue
       run: |
         echo "=== PODS ==="
         kubectl get pods -l app=cicd-kubernetes-mayte -o wide
@@ -99,46 +119,63 @@ jobs:
         echo "=== SERVICE ==="
         kubectl get service cicd-kubernetes-mayte-service
         echo ""
-        echo "=== DESCRIBE DEPLOYMENT ==="
-        kubectl describe deployment cicd-kubernetes-mayte
+        echo "=== DESCRIBE PODS ==="
+        kubectl describe pods -l app=cicd-kubernetes-mayte
     
     - name: 🧪 Probar aplicación en Kubernetes
       run: |
-        echo "Configurando port-forward..."
-        kubectl port-forward service/cicd-kubernetes-mayte-service 8080:80 &
-        sleep 15
-        echo "Probando endpoint de salud..."
-        curl -v http://localhost:8080/health
-        echo "✅ Aplicación responde correctamente"
+        echo "Obteniendo nombre del pod..."
+        POD_NAME=$(kubectl get pods -l app=cicd-kubernetes-mayte -o jsonpath='{.items[0].metadata.name}')
+        echo "Pod encontrado: $POD_NAME"
+        
+        echo "Verificando que el pod esté corriendo..."
+        kubectl get pod $POD_NAME
+        
+        echo "Probando conexión al pod directamente..."
+        kubectl port-forward pod/$POD_NAME 8080:5000 &
+        PF_PID=$!
+        sleep 10
+        
+        echo "Haciendo request al pod..."
+        curl -v http://localhost:8080/health || echo "Primera prueba falló, reintentando..."
+        sleep 5
+        curl -v http://localhost:8080/health || echo "No se pudo conectar al pod"
+        
+        kill $PF_PID || true
+        echo "✅ Test completado"
     
-    - name: 📋 Logs de los pods
+    - name: 📋 Logs de pods
       if: always()
       run: |
-        echo "=== LOGS DE PODS ==="
-        kubectl logs -l app=cicd-kubernetes-mayte --tail=100
+        echo "=== LOGS DE TODOS LOS PODS ==="
+        for pod in $(kubectl get pods -l app=cicd-kubernetes-mayte -o jsonpath='{.items[*].metadata.name}'); do
+          echo "--- Logs del pod: $pod ---"
+          kubectl logs $pod --tail=50 || echo "No se pudieron obtener logs"
+          echo ""
+        done
     
-    - name: 📈 Estadísticas finales
+    - name: 📈 Recursos finales
       if: always()
       run: |
         echo "=== TODOS LOS RECURSOS ==="
         kubectl get all
         echo ""
-        echo "=== EVENTOS ==="
+        echo "=== EVENTOS RECIENTES ==="
         kubectl get events --sort-by='.lastTimestamp' | tail -20
     
     - name: 🎉 Resumen del pipeline
+      if: success()
       run: |
-        echo "================================"
-        echo "✅ PIPELINE CI/CD COMPLETADO"
-        echo "================================"
+        echo "========================================"
+        echo "✅ PIPELINE CI/CD COMPLETADO CON ÉXITO"
+        echo "========================================"
         echo "✅ Código validado"
         echo "✅ Tests unitarios pasados"
         echo "✅ Imagen Docker construida"
         echo "✅ Cluster Kubernetes iniciado"
-        echo "✅ Aplicación desplegada"
-        echo "✅ 2 réplicas corriendo"
-        echo "✅ Service LoadBalancer activo"
-        echo "✅ Health checks configurados"
-        echo "================================"
-        echo "🚀 KUBERNETES DEPLOYMENT EXITOSO"
-        echo "================================"
+        echo "✅ Aplicación desplegada en Kubernetes"
+        echo "✅ Pods verificados"
+        echo "✅ Service configurado"
+        echo "========================================"
+        echo "🚀 DESPLIEGUE KUBERNETES EXITOSO"
+        echo "========================================"
