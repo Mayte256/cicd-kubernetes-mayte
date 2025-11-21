@@ -9,7 +9,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CI/CD Kubernetes - Mayte</title>
+    <title>CI/CD Kubernetes - Mayte,Joel,Damian,Alexis</title>
     <style>
         * {
             margin: 0;
