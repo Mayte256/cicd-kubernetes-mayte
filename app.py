@@ -207,11 +207,11 @@ HTML_TEMPLATE = """
         <div class="header">
             <div class="logo">☸️</div>
             <h1>CI/CD con Kubernetes</h1>
-            <p class="subtitle">Pipeline Automatizado - Proyecto por Mayte</p>
+            <p class="subtitle">Pipeline Automatizado - Proyecto por Mayte,Joel,Alexis,Damian</p>
         </div>
         
         <div class="info-card">
-            <h2>🚀 ¡Desplegado con Kubernetes!</h2>
+            <h2>🚀 ¡Desplegado con Kubernetes Prueba!</h2>
             <p>Esta aplicación demuestra un pipeline completo de CI/CD con GitHub Actions, 
             Docker y Kubernetes. El despliegue es totalmente automatizado desde el código 
             fuente hasta producción.</p>
