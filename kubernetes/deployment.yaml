@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-kubernetes-mayte
+  labels:
+    app: cicd-kubernetes-mayte
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cicd-kubernetes-mayte
+  template:
+    metadata:
+      labels:
+        app: cicd-kubernetes-mayte
+    spec:
+      containers:
+      - name: app
+        image: cicd-kubernetes-mayte:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        env:
+        - name: PORT
+          value: "5000"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
