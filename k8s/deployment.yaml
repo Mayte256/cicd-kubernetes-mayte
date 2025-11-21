@@ -1,46 +1,40 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mayte-app-deployment
+  name: cicd-kubernetes-mayte
   labels:
-    app: mayte-app
+    app: cicd-kubernetes-mayte
 spec:
   replicas: 2
-  
   selector:
     matchLabels:
-      app: mayte-app
-  
+      app: cicd-kubernetes-mayte
   template:
     metadata:
       labels:
-        app: mayte-app
+        app: cicd-kubernetes-mayte
     spec:
       containers:
-      - name: mayte-app
-        image: mayteapp:latest
-        
+      - name: app
+        image: cicd-kubernetes-mayte:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 5000
-        
         env:
-        - name: APP_VERSION
-          value: "v1.0"
-        
+        - name: PORT
+          value: "5000"
         livenessProbe:
           httpGet:
             path: /health
             port: 5000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           periodSeconds: 10
-        
         readinessProbe:
           httpGet:
             path: /health
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 5
-        
         resources:
           requests:
             memory: "128Mi"

@@ -1,15 +1,20 @@
+# Imagen base de Python
 FROM python:3.11-slim
 
+# Directorio de trabajo
 WORKDIR /app
 
-COPY app/requirements.txt .
+# Copiar archivos de requisitos
+COPY requirements.txt .
+
+# Instalar dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ .
+# Copiar código de la aplicación
+COPY app.py .
 
+# Exponer puerto
 EXPOSE 5000
 
-ENV FLASK_APP=app.py
-ENV APP_VERSION=v1.0
-
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "app:app"]
+# Comando para ejecutar la aplicación
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
