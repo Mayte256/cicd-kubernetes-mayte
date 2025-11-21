@@ -50,16 +50,24 @@ jobs:
         python -c "from app import app; client = app.test_client(); response = client.get('/health'); assert response.status_code == 200; print('✅ Health check funciona')"
         echo "✅ Todos los tests pasaron"
     
-    - name: 🐳 Construir imagen Docker
+    - name: 🏷️ Generar tag único
+      id: tag
       run: |
-        docker build -t cicd-kubernetes-mayte:latest .
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        echo "image_tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+        echo "Tag generado: $SHORT_SHA"
+    
+    - name: 🐳 Construir imagen Docker con tag único
+      run: |
+        docker build -t cicd-kubernetes-mayte:${{ steps.tag.outputs.image_tag }} .
+        docker tag cicd-kubernetes-mayte:${{ steps.tag.outputs.image_tag }} cicd-kubernetes-mayte:latest
         docker images | grep cicd-kubernetes-mayte
-        echo "✅ Imagen Docker construida exitosamente"
+        echo "✅ Imagen Docker construida con tag: ${{ steps.tag.outputs.image_tag }}"
     
     - name: 🧪 Test rápido del contenedor Docker
       run: |
         echo "Probando contenedor Docker..."
-        docker run -d --name test-container -p 5000:5000 cicd-kubernetes-mayte:latest
+        docker run -d --name test-container -p 5000:5000 cicd-kubernetes-mayte:${{ steps.tag.outputs.image_tag }}
         sleep 10
         curl -f http://localhost:5000/health || echo "Container no está listo todavía"
         docker logs test-container
@@ -91,8 +99,9 @@ jobs:
         kubectl get nodes
         echo "✅ Cluster funcionando"
     
-    - name: ☸️ Cargar imagen en Minikube
+    - name: ☸️ Cargar imagen en Minikube con tag único
       run: |
+        minikube image load cicd-kubernetes-mayte:${{ steps.tag.outputs.image_tag }}
         minikube image load cicd-kubernetes-mayte:latest
         echo "✅ Imagen cargada en Minikube"
     
@@ -102,11 +111,16 @@ jobs:
         kubectl apply -f kubernetes/service.yaml
         echo "✅ Manifiestos aplicados"
     
-    - name: ⏳ Esperar pods listos
+    - name: 🔄 Actualizar deployment con nuevo tag
       run: |
-        echo "Esperando que los pods estén listos..."
-        kubectl wait --for=condition=ready pod -l app=cicd-kubernetes-mayte --timeout=120s || true
-        kubectl get pods -l app=cicd-kubernetes-mayte
+        kubectl set image deployment/cicd-kubernetes-mayte cicd-kubernetes-mayte=cicd-kubernetes-mayte:${{ steps.tag.outputs.image_tag }}
+        echo "✅ Deployment actualizado con tag: ${{ steps.tag.outputs.image_tag }}"
+    
+    - name: ⏳ Esperar rollout completado
+      run: |
+        echo "Esperando que el rollout se complete..."
+        kubectl rollout status deployment/cicd-kubernetes-mayte --timeout=120s
+        echo "✅ Rollout completado"
     
     - name: 📊 Estado del despliegue
       run: |
@@ -171,9 +185,10 @@ jobs:
         echo "========================================"
         echo "✅ Código validado"
         echo "✅ Tests unitarios pasados"
-        echo "✅ Imagen Docker construida"
+        echo "✅ Imagen Docker construida con tag: ${{ steps.tag.outputs.image_tag }}"
         echo "✅ Cluster Kubernetes iniciado"
         echo "✅ Aplicación desplegada en Kubernetes"
+        echo "✅ Deployment actualizado automáticamente"
         echo "✅ Pods verificados"
         echo "✅ Service configurado"
         echo "========================================"
